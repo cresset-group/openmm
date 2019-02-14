@@ -227,11 +227,18 @@ ENDFOREACH(subdir)
 ###########################################################################
 
 set(PYTHON_SETUP_COMMAND build)
+
+SET(OPENMM_BUILD_PYTHON_WRAPPERS_DEBUG OFF CACHE BOOL "Build Python wrappers in debug mode")
+IF(OPENMM_BUILD_PYTHON_WRAPPERS_DEBUG)
+    set(PYTHON_SETUP_COMMAND ${PYTHON_SETUP_COMMAND} --debug)
+ENDIF(OPENMM_BUILD_PYTHON_WRAPPERS_DEBUG)
+
 configure_file(
     pysetup.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/pysetupbuild.cmake"
     @ONLY
 )
+
 add_custom_command(
     OUTPUT ${OPENMM_PYTHON_STAGING_DIR}/build
     COMMAND ${CMAKE_COMMAND}
