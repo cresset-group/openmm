@@ -43,13 +43,13 @@
 using namespace OpenMM;
 using namespace std;
 
-#ifdef OPENMM_OPENCL_BUILDING_STATIC_LIBRARY
+#ifdef OPENMM_COMMON_BUILDING_STATIC_LIBRARY
 extern "C" void registerOpenCLPlatform() {
     if (OpenCLPlatform::isPlatformSupported())
         Platform::registerPlatform(new OpenCLPlatform());
 }
 #else
-extern "C" OPENMM_EXPORT_OPENCL void registerPlatforms() {
+extern "C" OPENMM_EXPORT_COMMON void registerPlatforms() {
     if (OpenCLPlatform::isPlatformSupported())
         Platform::registerPlatform(new OpenCLPlatform());
 }
@@ -87,12 +87,15 @@ OpenCLPlatform::OpenCLPlatform() {
     registerKernelFactory(CalcCustomManyParticleForceKernel::Name(), factory);
     registerKernelFactory(CalcGayBerneForceKernel::Name(), factory);
     registerKernelFactory(IntegrateVerletStepKernel::Name(), factory);
+    registerKernelFactory(IntegrateVelocityVerletStepKernel::Name(), factory);
     registerKernelFactory(IntegrateLangevinStepKernel::Name(), factory);
+    registerKernelFactory(IntegrateBAOABStepKernel::Name(), factory);
     registerKernelFactory(IntegrateBrownianStepKernel::Name(), factory);
     registerKernelFactory(IntegrateVariableVerletStepKernel::Name(), factory);
     registerKernelFactory(IntegrateVariableLangevinStepKernel::Name(), factory);
     registerKernelFactory(IntegrateCustomStepKernel::Name(), factory);
     registerKernelFactory(ApplyAndersenThermostatKernel::Name(), factory);
+    registerKernelFactory(NoseHooverChainKernel::Name(), factory);
     registerKernelFactory(ApplyMonteCarloBarostatKernel::Name(), factory);
     registerKernelFactory(RemoveCMMotionKernel::Name(), factory);
     platformProperties.push_back(OpenCLDeviceIndex());
@@ -141,6 +144,17 @@ bool OpenCLPlatform::isPlatformSupported() {
         return false;
 #endif
 
+    // Make sure at least one OpenCL implementation is installed.
+
+    std::vector<cl::Platform> platforms;
+    try {
+        cl::Platform::get(&platforms);
+        if (platforms.size() == 0)
+            return false;
+    }
+    catch (...) {
+        return false;
+    }
     return true;
 }
 

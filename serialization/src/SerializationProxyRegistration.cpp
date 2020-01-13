@@ -30,6 +30,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "openmm/AndersenThermostat.h"
+#include "openmm/BAOABLangevinIntegrator.h"
 #include "openmm/BrownianIntegrator.h"
 #include "openmm/CMAPTorsionForce.h"
 #include "openmm/CMMotionRemover.h"
@@ -55,6 +56,7 @@
 #include "openmm/MonteCarloBarostat.h"
 #include "openmm/MonteCarloMembraneBarostat.h"
 #include "openmm/NonbondedForce.h"
+#include "openmm/NoseHooverIntegrator.h"
 #include "openmm/PeriodicTorsionForce.h"
 #include "openmm/RBTorsionForce.h"
 #include "openmm/RMSDForce.h"
@@ -65,6 +67,7 @@
 #include "openmm/VerletIntegrator.h"
 
 #include "openmm/serialization/SerializationProxy.h"
+#include "openmm/serialization/BAOABLangevinIntegratorProxy.h"
 #include "openmm/serialization/BrownianIntegratorProxy.h"
 #include "openmm/serialization/AndersenThermostatProxy.h"
 #include "openmm/serialization/CMAPTorsionForceProxy.h"
@@ -91,6 +94,7 @@
 #include "openmm/serialization/MonteCarloBarostatProxy.h"
 #include "openmm/serialization/MonteCarloMembraneBarostatProxy.h"
 #include "openmm/serialization/NonbondedForceProxy.h"
+#include "openmm/serialization/NoseHooverIntegratorProxy.h"
 #include "openmm/serialization/PeriodicTorsionForceProxy.h"
 #include "openmm/serialization/RBTorsionForceProxy.h"
 #include "openmm/serialization/RMSDForceProxy.h"
@@ -117,6 +121,7 @@ using namespace OpenMM;
 
 extern "C" void registerSerializationProxies() {
     SerializationProxy::registerProxy(typeid(AndersenThermostat), new AndersenThermostatProxy());
+    SerializationProxy::registerProxy(typeid(BAOABLangevinIntegrator), new BAOABLangevinIntegratorProxy());
     SerializationProxy::registerProxy(typeid(BrownianIntegrator), new BrownianIntegratorProxy());
     SerializationProxy::registerProxy(typeid(CMAPTorsionForce), new CMAPTorsionForceProxy());
     SerializationProxy::registerProxy(typeid(CMMotionRemover), new CMMotionRemoverProxy());
@@ -148,6 +153,7 @@ extern "C" void registerSerializationProxies() {
     SerializationProxy::registerProxy(typeid(MonteCarloBarostat), new MonteCarloBarostatProxy());
     SerializationProxy::registerProxy(typeid(MonteCarloMembraneBarostat), new MonteCarloMembraneBarostatProxy());
     SerializationProxy::registerProxy(typeid(NonbondedForce), new NonbondedForceProxy());
+    SerializationProxy::registerProxy(typeid(NoseHooverIntegrator), new NoseHooverIntegratorProxy());
     SerializationProxy::registerProxy(typeid(PeriodicTorsionForce), new PeriodicTorsionForceProxy());
     SerializationProxy::registerProxy(typeid(RBTorsionForce), new RBTorsionForceProxy());
     SerializationProxy::registerProxy(typeid(RMSDForce), new RMSDForceProxy());

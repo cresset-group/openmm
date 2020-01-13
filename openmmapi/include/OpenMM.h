@@ -33,6 +33,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "openmm/AndersenThermostat.h"
+#include "openmm/BAOABLangevinIntegrator.h"
 #include "openmm/BrownianIntegrator.h"
 #include "openmm/CMAPTorsionForce.h"
 #include "openmm/CMMotionRemover.h"
@@ -74,6 +75,8 @@
 #include "openmm/VariableVerletIntegrator.h"
 #include "openmm/Vec3.h"
 #include "openmm/VerletIntegrator.h"
+#include "openmm/NoseHooverIntegrator.h"
+#include "openmm/NoseHooverChain.h"
 #include "openmm/VirtualSite.h"
 #include "openmm/Platform.h"
 #include "openmm/serialization/XmlSerializer.h"
