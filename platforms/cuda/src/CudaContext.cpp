@@ -132,16 +132,6 @@ CudaContext::CudaContext(const System& system, int deviceIndex, bool useBlocking
     isNvccAvailable = (res == 0 && stat(tempDir.c_str(), &info) == 0);
     int cudaDriverVersion;
     cuDriverGetVersion(&cudaDriverVersion);
-    static bool hasShownNvccWarning = false;
-    if (hasCompilerKernel && !isNvccAvailable && !hasShownNvccWarning && cudaDriverVersion < 8000) {
-        hasShownNvccWarning = true;
-        printf("Could not find nvcc.  Using runtime compiler, which may produce slower performance.  ");
-#ifdef WIN32
-        printf("Set CUDA_BIN_PATH to specify where nvcc is located.\n");
-#else
-        printf("Set OPENMM_CUDA_COMPILER to specify where nvcc is located.\n");
-#endif
-    }
     if (hostCompiler.size() > 0)
         this->compiler = compiler+" --compiler-bindir "+hostCompiler;
     if (!hasInitializedCuda) {
@@ -258,7 +248,7 @@ CudaContext::CudaContext(const System& system, int deviceIndex, bool useBlocking
     int multiprocessors;
     CHECK_RESULT(cuDeviceGetAttribute(&multiprocessors, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, device));
     numThreadBlocks = numThreadBlocksPerComputeUnit*multiprocessors;
-    if (computeCapability >= 7.0) {
+    if (cudaDriverVersion >= 9000) {
         compilationDefines["SYNC_WARPS"] = "__syncwarp();";
         compilationDefines["SHFL(var, srcLane)"] = "__shfl_sync(0xffffffff, var, srcLane);";
         compilationDefines["BALLOT(var)"] = "__ballot_sync(0xffffffff, var);";
@@ -575,7 +565,7 @@ CUmodule CudaContext::createModule(const string source, const map<string, string
 
     // If the runtime compiler plugin is available, use it.
 
-    if (hasCompilerKernel && !isNvccAvailable) {
+    if (hasCompilerKernel) {
         string ptx = compilerKernel.getAs<CudaCompilerKernel>().createModule(src.str(), "-arch=compute_"+gpuArchitecture+" "+options, *this);
 
         // If possible, write the PTX out to a temporary file so we can cache it for later use.
@@ -610,7 +600,7 @@ CUmodule CudaContext::createModule(const string source, const map<string, string
 #else
         string command = compiler+" --ptx -lineinfo --machine "+bits+" -arch=sm_"+gpuArchitecture+" -o "+outputFile+" "+options+" "+inputFile+" 2> "+logFile;
 #endif
-        int res = executeInWindows(command);
+        res = executeInWindows(command);
 #else
         string command = compiler+" --ptx --machine "+bits+" -arch=sm_"+gpuArchitecture+" -o \""+outputFile+"\" "+options+" \""+inputFile+"\" 2> \""+logFile+"\"";
         res = std::system(command.c_str());

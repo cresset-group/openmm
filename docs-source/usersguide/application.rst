@@ -120,7 +120,7 @@ steps.
         forcefield = ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
         system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME,
                 nonbondedCutoff=1*nanometer, constraints=HBonds)
-        integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+        integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
         simulation = Simulation(pdb.topology, system, integrator)
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
@@ -210,14 +210,17 @@ convenient and less error-prone.  We could have equivalently specified
 The units system will be described in more detail later, in Section :ref:`units-and-dimensional-analysis`.
 ::
 
-    integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+    integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
 
 This line creates the integrator to use for advancing the equations of motion.
-It specifies a :class:`BAOABLangevinIntegrator`, which performs Langevin dynamics,
+It specifies a :class:`LangevinMiddleIntegrator`, which performs Langevin dynamics,
 and assigns it to a variable called :code:`integrator`\ .  It also specifies
 the values of three parameters that are specific to Langevin dynamics: the
 simulation temperature (300 K), the friction coefficient (1 ps\ :sup:`-1`\ ), and
-the step size (0.002 ps).
+the step size (0.004 ps).  Lots of other integration methods are also available.
+For example, if you wanted to simulate the system at constant energy rather than
+constant temperature you would use a :code:`VerletIntegrator`\ .  The available
+integration methods are listed in Section :ref:`integrators`.
 ::
 
     simulation = Simulation(pdb.topology, system, integrator)
@@ -295,7 +298,7 @@ found in OpenMM’s :file:`examples` folder with the name :file:`simulateAmber.p
         inpcrd = AmberInpcrdFile('input.inpcrd')
         system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer,
                 constraints=HBonds)
-        integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+        integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
         simulation = Simulation(prmtop.topology, system, integrator)
         simulation.context.setPositions(inpcrd.positions)
         if inpcrd.boxVectors is not None:
@@ -389,7 +392,7 @@ with the name :file:`simulateGromacs.py`.
                 includeDir='/usr/local/gromacs/share/gromacs/top')
         system = top.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer,
                 constraints=HBonds)
-        integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+        integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
         simulation = Simulation(top.topology, system, integrator)
         simulation.context.setPositions(gro.positions)
         simulation.minimizeEnergy()
@@ -453,7 +456,7 @@ on the :class:`CharmmPsfFile`.
         params = CharmmParameterSet('charmm22.rtf', 'charmm22.prm')
         system = psf.createSystem(params, nonbondedMethod=NoCutoff,
                 nonbondedCutoff=1*nanometer, constraints=HBonds)
-        integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+        integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
         simulation = Simulation(psf.topology, system, integrator)
         simulation.context.setPositions(pdb.positions)
         simulation.minimizeEnergy()
@@ -647,8 +650,8 @@ such as :file:`charmm36/water.xml`, which specifies the default CHARMM water mod
 .. warning:: Drude polarizable sites and lone pairs are not yet supported
              by `ParmEd <https://github.com/parmed/parmed>`_ and the CHARMM36 forcefields
              that depend on these features are not included in this port.
-             To use the CHARMM 2013 polarizable force field\ :cite:`Lopes2013`,
-             include the single file :file:`charmm_polar_2013.xml`.
+             To use the CHARMM 2019 polarizable force field\ :cite:`Lopes2013`,
+             include the single file :file:`charmm_polar_2019.xml`.
 
 .. tip:: The solvent model XML files included under the :file:`charmm36/` directory
          include both water *and* ions compatible with that water model, so if you
@@ -709,17 +712,20 @@ recommended for most simulations.
 CHARMM Polarizable Force Field
 ------------------------------
 
-To use the CHARMM 2013 polarizable force field\ :cite:`Lopes2013`, include the
-single file :file:`charmm_polar_2013.xml`.  It includes parameters for proteins,
+To use the CHARMM 2019 polarizable force field\ :cite:`Lopes2013`, include the
+single file :file:`charmm_polar_2019.xml`.  It includes parameters for proteins, lipids,
 water, and ions.  When using this force field, remember to add extra particles to
 the :class:`Topology` as described in section :ref:`adding-or-removing-extra-particles`.
+This force field also requires that you use one of the special integrators that
+supports Drude particles.  The options are DrudeLangevinIntegrator, DrudeNoseHooverIntegrator,
+and DrudeSCFIntegrator.
 
-Older Amber Force Fields
-------------------------
+Older Force Fields
+------------------
 
-OpenMM includes several older Amber force fields as well.  For most simulations
-Amber14 is preferred over any of these, but they are still useful for reproducing
-older results.
+OpenMM includes several older force fields as well.  For most simulations, the
+newer force fields described above are preferred over any of these, but they are
+still useful for reproducing older results.
 
 .. tabularcolumns:: |l|L|
 
@@ -732,6 +738,7 @@ File                           Force Field
 :code:`amber99sbnmr.xml`       Amber99SB with modifications to fit NMR data\ :cite:`Li2010`
 :code:`amber03.xml`            Amber03\ :cite:`Duan2003`
 :code:`amber10.xml`            Amber10 (documented in the AmberTools_ manual as `ff10`)
+:code:`charmm_polar_2013.xml`  2013 version of the CHARMM polarizable force field\ :cite:`Lopes2013`
 =============================  ================================================================================
 
 Several of these force fields support implicit solvent.  To enable it, also
@@ -774,6 +781,94 @@ File                 Water Model
 :code:`swm4ndp.xml`  SWM4-NDP water model\ :cite:`Lamoureux2006`
 ===================  ============================================
 
+Small molecule parameters
+=========================
+
+The OpenMM force fields above include pregenerated templates for biopolymers
+and solvents. If your system instead contain small molecules, it is often
+necessary to generate these parameters on the fly.
+
+
+There are two options for doing this within the OpenMM ``app`` ecosystem:
+
+Small molecule residue template generators
+------------------------------------------
+
+One approach is to use residue template generators for small molecules from the
+openmmforcefields_  conda package.
+You can install this via conda with:
+
+.. code-block:: bash
+
+    $ conda install -c omnia -c conda-forge openmmforcefields
+
+You can then add a small molecule residue template generator using the Open Force
+Field Initiative small molecule force fields using the following example:
+
+::
+
+    # Create an openforcefield Molecule object for benzene from SMILES
+    from openforcefield.topology import Molecule
+    molecule = Molecule.from_smiles('c1ccccc1')
+    # Create the SMIRNOFF template generator with the most up to date Open Force Field Initiative force field
+    from openmmforcefields.generators import SMIRNOFFTemplateGenerator
+    smirnoff = SMIRNOFFTemplateGenerator(molecules=molecule)
+    # Create an OpenMM ForceField object with AMBER ff14SB and TIP3P with compatible ions
+    from simtk.openmm.app import ForceField
+    forcefield = ForceField('amber/protein.ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml')
+    # Register the SMIRNOFF template generator
+    forcefield.registerTemplateGenerator(smirnoff.generator)
+
+Alternatively, you can use the older `AMBER GAFF small molecule force field <http://ambermd.org/antechamber/gaff.html>`_:
+
+::
+
+    # Create an openforcefield Molecule object for benzene from SMILES
+    from openforcefield.topology import Molecule
+    molecule = Molecule.from_smiles('c1ccccc1')
+    # Create the GAFF template generator
+    from openmmforcefields.generators import GAFFTemplateGenerator
+    gaff = GAFFTemplateGenerator(molecules=molecule)
+    # Create an OpenMM ForceField object with AMBER ff14SB and TIP3P with compatible ions
+    from simtk.openmm.app import ForceField
+    forcefield = ForceField('amber/protein.ff14SB.xml', 'amber/tip3p_standard.xml', 'amber/tip3p_HFE_multivalent.xml')
+    # Register the GAFF template generator
+    forcefield.registerTemplateGenerator(gaff.generator)
+    # You can now parameterize an OpenMM Topology object that contains the specified molecule.
+    # forcefield will load the appropriate GAFF parameters when needed, and antechamber
+    # will be used to generate small molecule parameters on the fly.
+    from simtk.openmm.app import PDBFile
+    pdbfile = PDBFile('t4-lysozyme-L99A-with-benzene.pdb')
+    system = forcefield.createSystem(pdbfile.topology)
+
+More documentation can be found on the openmmforcefields_ page.
+
+Managing force fields with ``SystemGenerator``
+----------------------------------------------
+
+As an alternative to explicitly registering template generators, the openmmforcefields_
+package provides a ``SystemGenerator`` facility to simplify biopolymer and
+small molecule force field management. To use this, you can simply specify the
+small molecule force field you want to use:
+
+::
+
+    # Define the keyword arguments to feed to ForceField
+    from simtk import unit
+    from simtk.openmm import app
+    forcefield_kwargs = { 'constraints' : app.HBonds, 'rigidWater' : True, 'removeCMMotion' : False, 'hydrogenMass' : 4*unit.amu }
+    # Initialize a SystemGenerator using the Open Force Field Initiative 1.2.0 force field (openff-1.2.0)
+    from openmmforcefields.generators import SystemGenerator
+    system_generator = SystemGenerator(forcefields=['amber/ff14SB.xml', 'amber/tip3p_standard.xml'], small_molecule_forcefield='openff-1.2.0', forcefield_kwargs=forcefield_kwargs, cache='db.json')
+    # Create an OpenMM System from an OpenMM Topology object and a list of openforcefield Molecule objects
+    molecules = Molecule.from_file('molecules.sdf', file_format='sdf')
+    system = system_generator.create_system(topology, molecules=molecules)
+
+The ``SystemGenerator`` will match any instances of the molecules found in ``molecules.sdf`` to those that appear in ``topology``.
+Note that the protonation and tautomeric states must match exactly between the ``molecules`` read and those appearing in the Topology.
+See the openmmforcefields_ documentation for more details.
+
+.. _openmmforcefields: http://github.com/openmm/openmmforcefields
 
 AMBER Implicit Solvent
 ======================
@@ -981,9 +1076,10 @@ Value             Meaning
 
 The main reason to use constraints is that it allows one to use a larger
 integration time step.  With no constraints, one is typically limited to a time
-step of about 1 fs for typical biomolecular force fields like AMBER or CHARMM.  With :code:`HBonds` constraints, this can be increased
-to about 2 fs.  With :code:`HAngles`\ , it can be further increased to 3.5 or
-4 fs.
+step of about 1 fs for typical biomolecular force fields like AMBER or CHARMM.
+With :code:`HBonds` constraints, this can be increased to about 2 fs for Verlet
+dynamics, or about 4 fs for Langevin dynamics.  With :code:`HAngles`\ , it can
+sometimes be increased even further.
 
 Regardless of the value of this parameter, OpenMM makes water molecules
 completely rigid, constraining both their bond lengths and angles.  You can
@@ -997,7 +1093,9 @@ step size, typically to about 0.5 fs.
 
 .. note::
 
-   The AMOEBA forcefield is intended to be used without constraints.
+   The AMOEBA forcefield is designed to be used without constraints, so by
+   default OpenMM makes AMOEBA water flexible.  You can still force it to be
+   rigid by specifying :code:`rigidWater=True`.
 
 Heavy Hydrogens
 ===============
@@ -1012,8 +1110,10 @@ optionally tell OpenMM to increase the mass of hydrogen atoms.  For example,
 This applies only to hydrogens that are bonded to heavy atoms, and any mass
 added to the hydrogen is subtracted from the heavy atom.  This keeps their total
 mass constant while slowing down the fast motions of hydrogens.  When combined
-with constraints (typically :code:`constraints=AllBonds`\ ), this allows a
+with constraints (typically :code:`constraints=AllBonds`\ ), this often allows a
 further increase in integration step size.
+
+.. _integrators:
 
 Integrators
 ===========
@@ -1021,31 +1121,63 @@ Integrators
 
 OpenMM offers a choice of several different integration methods.  You select
 which one to use by creating an integrator object of the appropriate type.
+Detailed descriptions of all these integrators can be found in Chapter
+:ref:`integrators-theory`.  In addition to these built in integrators, lots of
+others are available as part of the `OpenMMTools <https://openmmtools.readthedocs.io>`_ package.
 
-BAOAB Langevin Integrator
--------------------------
+Langevin Middle Integrator
+--------------------------
 
 In the examples of the previous sections, we used Langevin integration:
 ::
 
-    integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+    integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
 
 The three parameter values in this line are the simulation temperature (300 K),
-the friction coefficient (1 ps\ :sup:`-1`\ ), and the step size (0.002 ps).  You
+the friction coefficient (1 ps\ :sup:`-1`\ ), and the step size (0.004 ps).  You
 are free to change these to whatever values you want.  Be sure to specify units
 on all values.  For example, the step size could be written either as
-:code:`0.002*picoseconds` or :code:`2*femtoseconds`\ .  They are exactly
-equivalent.
+:code:`0.004*picoseconds` or :code:`4*femtoseconds`\ .  They are exactly
+equivalent.  Note that :code:`LangevinMiddleIntegrator` is a leapfrog
+integrator, so the velocities are offset by half a time step from the positions.
 
 Langevin Integrator
 -------------------
 
-:code:`LangevinIntegrator` is very similar to :code:`BAOABLangevinIntegrator`,
+:code:`LangevinIntegrator` is very similar to :code:`LangevinMiddleIntegrator`,
 but it uses a different discretization of the Langevin equation.
-:code:`BAOABLangevinIntegrator` tends to produce more accurate configurational
+:code:`LangevinMiddleIntegrator` tends to produce more accurate configurational
 sampling, and therefore is preferred for most applications.  Also note that
-:code:`LangevinIntegrator` (unlike :code:`BAOABLangevinIntegrator`) is a leapfrog
+:code:`LangevinIntegrator`\ , like :code:`LangevinMiddleIntegrator`\ , is a leapfrog
 integrator, so the velocities are offset by half a time step from the positions.
+
+Nosé-Hoover Integrator
+----------------------
+
+The :code:`NoseHooverIntegrator` uses the same "middle" leapfrog propagation
+algorithm as :code:`LangevinMiddleIntegrator`, but replaces the stochastic
+temperature control with a velocity scaling algorithm that produces more
+accurate transport properties :cite:`Basconi2013`.  This velocity scaling
+results from propagating a chain of extra variables, which slightly reduces the
+computational efficiency with respect to :code:`LangevinMiddleIntegrator`.  The
+thermostated integrator is minimally created with syntax analogous to the
+:code:`LangevinMiddleIntegrator` example above::
+
+    NoseHooverIntegrator integrator(300*kelvin, 1/picosecond,
+                                    0.004*picoseconds);
+
+The first argument specifies the target temperature.  The second specifies the
+frequency of interaction with the heat bath: a lower value interacts minimally,
+yielding the microcanonical ensemble in the limit of a zero frequency, while a
+larger frequency will perturb the system greater, keeping it closer to the
+target temperature.  The third argument is the integration timestep that, like
+the other arguments, must be specified with units.  For initial equilibration
+to the target temperature, a larger interaction frequency is recommended,
+*e.g.* 25 ps\ :sup:`-1`.
+
+This integrator supports lots of other options, including the ability to couple
+different parts of the system to thermostats at different temperatures. See the
+API documentation for details.
 
 Leapfrog Verlet Integrator
 --------------------------
@@ -1111,6 +1243,13 @@ algorithm\ :cite:`Tuckerman1992`.  This allows some forces in the system to be e
 frequently than others.  For details on how to use it, consult the API
 documentation.
 
+Multiple Time Step Langevin Integrator
+--------------------------------------
+
+:class:`MTSLangevinIntegrator` is similar to :class:`MTSIntegrator`, but it uses
+the Langevin method to perform constant temperature dynamics.  For details on
+how to use it, consult the API documentation.
+
 Compound Integrator
 -------------------
 
@@ -1155,7 +1294,7 @@ previous section:
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer,
             constraints=HBonds)
     system.addForce(MonteCarloBarostat(1*bar, 300*kelvin))
-    integrator = BAOABLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+    integrator = LangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds)
     ...
 
 The parameters of the Monte Carlo barostat are the pressure (1 bar) and
@@ -1715,7 +1854,7 @@ executing 1000 time steps at each temperature:
         :autonumber:`Example,simulated annealing`
 
 This code needs very little explanation.  The loop is executed 100 times.  Each
-time through, it adjusts the temperature of the :class:`BAOABLangevinIntegrator` and then
+time through, it adjusts the temperature of the :class:`LangevinMiddleIntegrator` and then
 calls :code:`step(1000)` to take 1000 time steps.
 
 Applying an External Force to Particles: a Spherical Container
@@ -1747,7 +1886,7 @@ coordinates.  Here is the code to do it:
         system.addForce(force)
         for i in range(system.getNumParticles()):
             force.addParticle(i, [])
-        integrator = BAOABLangevinIntegrator(300*kelvin, 91/picosecond, 0.002*picoseconds)
+        integrator = LangevinMiddleIntegrator(300*kelvin, 91/picosecond, 0.004*picoseconds)
         ...
 
     .. caption::
@@ -2336,7 +2475,7 @@ The :code:`<PeriodicTorsionForce>` tag also supports an optional
 impropers are assigned in different simulation packages:
 
  * :code:`ordering="default"` specifies the default behavior if the attribute
-   is omitted. 
+   is omitted.
  * :code:`ordering="amber"` produces behavior that replicates the behavior of
    AmberTools LEaP
  * :code:`ordering="charmm"` produces behavior more consistent with CHARMM

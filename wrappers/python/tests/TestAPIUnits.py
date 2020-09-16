@@ -387,7 +387,7 @@ class TestAPIUnits(unittest.TestCase):
         self.assertEqual(scale, 0.5)
 
         q, rad, scale = force.getParticleParameters(1)
-        self.assertEqual(q, -6.24150962915265e+18) # very electronegative
+        self.assertEqual(q, -6.241509074460763e18) # very electronegative
         self.assertEqual(rad, 0.1)
         self.assertEqual(scale, 0.5)
 
@@ -474,7 +474,7 @@ class TestAPIUnits(unittest.TestCase):
         self.assertEqual(epsilon, 3)
 
         charge, sigma, epsilon = force.getParticleParameters(1)
-        self.assertEqual(charge, 6.24150962915265e+18) # very electronegative
+        self.assertEqual(charge, 6.241509074460763e18) # very electronegative
         self.assertEqual(sigma, 2*4.184/100)
         self.assertAlmostEqual(epsilon, 3*4.184/1000)
 
@@ -969,29 +969,32 @@ class TestAPIUnits(unittest.TestCase):
 
         self.assertEqual(force.getNumParticles(), 3)
 
-        p, sig, eps, scale, alchemical = force.getParticleParameters(0)
+        p, sig, eps, scale, alchemical, type = force.getParticleParameters(0)
         self.assertEqual(p, 0)
         self.assertEqual(sig, 0.1*nanometers)
         self.assertIs(sig.unit, nanometers)
         self.assertEqual(eps, 1.0*kilojoules_per_mole)
         self.assertIs(eps.unit, kilojoules_per_mole)
         self.assertEqual(scale, 1.0)
+        self.assertEqual(type, -1)
 
-        p, sig, eps, scale, alchemical = force.getParticleParameters(1)
+        p, sig, eps, scale, alchemical, type = force.getParticleParameters(1)
         self.assertEqual(p, 1)
         self.assertEqual(sig, 1.0*angstroms)
         self.assertIs(sig.unit, nanometers)
         self.assertEqual(eps, 1.0*kilocalories_per_mole)
         self.assertIs(eps.unit, kilojoules_per_mole)
         self.assertEqual(scale, 0.5)
+        self.assertEqual(type, -1)
 
-        p, sig, eps, scale, alchemical = force.getParticleParameters(2)
+        p, sig, eps, scale, alchemical, type = force.getParticleParameters(2)
         self.assertEqual(p, 1)
         self.assertAlmostEqualUnit(sig, 0.8*angstroms)
         self.assertIs(sig.unit, nanometers)
         self.assertEqual(eps, 2.0*kilocalories_per_mole)
         self.assertIs(eps.unit, kilojoules_per_mole)
         self.assertEqual(scale, 0.25)
+        self.assertEqual(type, -1)
 
     def testAmoebaWcaDispersionForce(self):
         """ Tests the AmoebaWcaDispersionForce API features """

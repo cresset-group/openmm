@@ -2,6 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
+// NOTE: This file has been changed from the orginal source distribution.
+
 #ifndef __IRR_TYPES_H_INCLUDED__
 #define __IRR_TYPES_H_INCLUDED__
 
