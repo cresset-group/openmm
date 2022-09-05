@@ -97,12 +97,12 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
     __local int workgroupBuffer[BUFFER_SIZE*(GROUP_SIZE/32)];
     __local int warpExclusions[MAX_EXCLUSIONS*(GROUP_SIZE/32)];
     __local real3 posBuffer[GROUP_SIZE];
-    __local volatile int workgroupTileIndex[GROUP_SIZE/32];
+    __local volatile unsigned int workgroupTileIndex[GROUP_SIZE/32];
     __local bool includeBlockFlags[GROUP_SIZE];
     __local volatile short2 atomCountBuffer[GROUP_SIZE];
     __local int* buffer = workgroupBuffer+BUFFER_SIZE*(warpStart/32);
     __local int* exclusionsForX = warpExclusions+MAX_EXCLUSIONS*(warpStart/32);
-    __local volatile int* tileStartIndex = workgroupTileIndex+(warpStart/32);
+    __local volatile unsigned int* tileStartIndex = workgroupTileIndex+(warpStart/32);
 
     // Loop over blocks.
 
@@ -233,20 +233,24 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
                     if (neighborsInBuffer > BUFFER_SIZE-TILE_SIZE) {
                         // Store the new tiles to memory.
 
-                        int tilesToStore = neighborsInBuffer/TILE_SIZE;
+                        unsigned int tilesToStore = neighborsInBuffer/TILE_SIZE;
                         if (indexInWarp == 0)
-                            *tileStartIndex = atom_add(interactionCount, tilesToStore);
+                            *tileStartIndex = ATOMIC_ADD(interactionCount, tilesToStore);
                         SYNC_WARPS;
-                        int newTileStartIndex = *tileStartIndex;
+                        unsigned int newTileStartIndex = *tileStartIndex;
                         if (newTileStartIndex+tilesToStore <= maxTiles) {
                             if (indexInWarp < tilesToStore)
                                 interactingTiles[newTileStartIndex+indexInWarp] = x;
                             for (int j = 0; j < tilesToStore; j++)
                                 interactingAtoms[(newTileStartIndex+j)*TILE_SIZE+indexInWarp] = buffer[indexInWarp+j*TILE_SIZE];
                         }
-                        buffer[indexInWarp] = buffer[indexInWarp+TILE_SIZE*tilesToStore];
+                        if (indexInWarp+TILE_SIZE*tilesToStore < BUFFER_SIZE)
+                            buffer[indexInWarp] = buffer[indexInWarp+TILE_SIZE*tilesToStore];
                         neighborsInBuffer -= TILE_SIZE*tilesToStore;
                    }
+                }
+                else {
+                    SYNC_WARPS;
                 }
             }
         }
@@ -254,11 +258,11 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
         // If we have a partially filled buffer,  store it to memory.
         
         if (neighborsInBuffer > 0) {
-            int tilesToStore = (neighborsInBuffer+TILE_SIZE-1)/TILE_SIZE;
+            unsigned int tilesToStore = (neighborsInBuffer+TILE_SIZE-1)/TILE_SIZE;
             if (indexInWarp == 0)
-                *tileStartIndex = atom_add(interactionCount, tilesToStore);
+                *tileStartIndex = ATOMIC_ADD(interactionCount, tilesToStore);
             SYNC_WARPS;
-            int newTileStartIndex = *tileStartIndex;
+            unsigned int newTileStartIndex = *tileStartIndex;
             if (newTileStartIndex+tilesToStore <= maxTiles) {
                 if (indexInWarp < tilesToStore)
                     interactingTiles[newTileStartIndex+indexInWarp] = x;
@@ -402,7 +406,7 @@ void storeInteractionData(int x, __local int* buffer, __local int* sum, __local 
         int tilesToStore = (storePartialTile ? (atomsToStore+TILE_SIZE-1)/TILE_SIZE : atomsToStore/TILE_SIZE);
         if (tilesToStore > 0) {
             if (get_local_id(0) == 0)
-                *baseIndex = atom_add(interactionCount, tilesToStore);
+                *baseIndex = ATOMIC_ADD(interactionCount, tilesToStore);
             barrier(CLK_LOCAL_MEM_FENCE);
             if (get_local_id(0) == 0)
                 *numAtoms = atomsToStore-tilesToStore*TILE_SIZE;
@@ -428,7 +432,7 @@ void storeInteractionData(int x, __local int* buffer, __local int* sum, __local 
         // previous call to this function.  Save them now.
 
         if (get_local_id(0) == 0)
-            *baseIndex = atom_add(interactionCount, 1);
+            *baseIndex = ATOMIC_ADD(interactionCount, 1);
         barrier(CLK_LOCAL_MEM_FENCE);
         if (*baseIndex < maxTiles) {
             if (get_local_id(0) == 0)

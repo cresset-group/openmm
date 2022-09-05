@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2009-2020 Stanford University and the Authors.      *
+ * Portions copyright (c) 2009-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -26,6 +26,7 @@
 
 #include "openmm/common/IntegrationUtilities.h"
 #include "openmm/common/ComputeContext.h"
+#include "openmm/common/ContextSelector.h"
 #include "CommonKernelSources.h"
 #include "openmm/internal/OSRngSeed.h"
 #include "openmm/HarmonicAngleForce.h"
@@ -527,8 +528,6 @@ IntegrationUtilities::IntegrationUtilities(ComputeContext& context, const System
     for (int i = 0; i < numAtoms; i++)
         if (atomCounts[i] > 1)
             hasOverlappingVsites = true;
-    if (hasOverlappingVsites && !context.getSupports64BitGlobalAtomics())
-        throw OpenMMException("This device does not support 64 bit atomics.  Cannot have multiple virtual sites that depend on the same atom.");
 
     // Create the kernels used by this class.
 
@@ -601,7 +600,7 @@ IntegrationUtilities::IntegrationUtilities(ComputeContext& context, const System
     // Set arguments for constraint kernels.
 
     if (settleAtoms.isInitialized()) {
-        settlePosKernel->addArg(settleAtoms.getSize());
+        settlePosKernel->addArg((int) settleAtoms.getSize());
         settlePosKernel->addArg();
         settlePosKernel->addArg(context.getPosq());
         settlePosKernel->addArg(posDelta);
@@ -610,7 +609,7 @@ IntegrationUtilities::IntegrationUtilities(ComputeContext& context, const System
         settlePosKernel->addArg(settleParams);
         if (context.getUseMixedPrecision())
             settlePosKernel->addArg(context.getPosqCorrection());
-        settleVelKernel->addArg(settleAtoms.getSize());
+        settleVelKernel->addArg((int) settleAtoms.getSize());
         settleVelKernel->addArg();
         settleVelKernel->addArg(context.getPosq());
         settleVelKernel->addArg(posDelta);
@@ -621,7 +620,7 @@ IntegrationUtilities::IntegrationUtilities(ComputeContext& context, const System
             settleVelKernel->addArg(context.getPosqCorrection());
     }
     if (shakeAtoms.isInitialized()) {
-        shakePosKernel->addArg(shakeAtoms.getSize());
+        shakePosKernel->addArg((int) shakeAtoms.getSize());
         shakePosKernel->addArg();
         shakePosKernel->addArg(context.getPosq());
         shakePosKernel->addArg(posDelta);
@@ -629,7 +628,7 @@ IntegrationUtilities::IntegrationUtilities(ComputeContext& context, const System
         shakePosKernel->addArg(shakeParams);
         if (context.getUseMixedPrecision())
             shakePosKernel->addArg(context.getPosqCorrection());
-        shakeVelKernel->addArg(shakeAtoms.getSize());
+        shakeVelKernel->addArg((int) shakeAtoms.getSize());
         shakeVelKernel->addArg();
         shakeVelKernel->addArg(context.getPosq());
         shakeVelKernel->addArg(context.getVelm());
@@ -736,6 +735,7 @@ void IntegrationUtilities::applyVelocityConstraints(double tol) {
 }
 
 void IntegrationUtilities::computeVirtualSites() {
+    ContextSelector selector(context);
     if (numVsites > 0)
         vsitePositionKernel->execute(numVsites);
 }
@@ -753,7 +753,7 @@ void IntegrationUtilities::initRandomNumberGenerator(unsigned int randomNumberSe
     random.initialize<mm_float4>(context, 4*context.getPaddedNumAtoms(), "random");
     randomSeed.initialize<mm_int4>(context, context.getNumThreadBlocks()*64, "randomSeed");
     randomPos = random.getSize();
-    randomKernel->addArg(random.getSize());
+    randomKernel->addArg((int) random.getSize());
     randomKernel->addArg(random);
     randomKernel->addArg(randomSeed);
 
@@ -812,6 +812,7 @@ void IntegrationUtilities::loadCheckpoint(istream& stream) {
 }
 
 double IntegrationUtilities::computeKineticEnergy(double timeShift) {
+    ContextSelector selector(context);
     int numParticles = context.getNumAtoms();
     if (timeShift != 0) {
         // Copy the velocities into the posDelta array while we temporarily modify them.
@@ -834,7 +835,7 @@ double IntegrationUtilities::computeKineticEnergy(double timeShift) {
     
     double energy = 0.0;
     if (context.getUseDoublePrecision() || context.getUseMixedPrecision()) {
-        vector<mm_double4> velm;
+        auto velm = (mm_double4*)context.getPinnedBuffer();
         context.getVelm().download(velm);
         for (int i = 0; i < numParticles; i++) {
             mm_double4 v = velm[i];
@@ -843,7 +844,7 @@ double IntegrationUtilities::computeKineticEnergy(double timeShift) {
         }
     }
     else {
-        vector<mm_float4> velm;
+        auto velm = (mm_float4*)context.getPinnedBuffer();
         context.getVelm().download(velm);
         for (int i = 0; i < numParticles; i++) {
             mm_float4 v = velm[i];
@@ -857,4 +858,50 @@ double IntegrationUtilities::computeKineticEnergy(double timeShift) {
     if (timeShift != 0)
         posDelta.copyTo(context.getVelm());
     return 0.5*energy;
+}
+
+void IntegrationUtilities::computeShiftedVelocities(double timeShift, vector<Vec3>& velocities) {
+    ContextSelector selector(context);
+    int numParticles = context.getNumAtoms();
+    if (timeShift != 0) {
+        // Copy the velocities into the posDelta array while we temporarily modify them.
+
+        context.getVelm().copyTo(posDelta);
+
+        // Apply the time shift.
+
+        timeShiftKernel->setArg(0, context.getVelm());
+        timeShiftKernel->setArg(1, context.getLongForceBuffer());
+        if (context.getUseDoublePrecision())
+            timeShiftKernel->setArg(2, timeShift);
+        else
+            timeShiftKernel->setArg(2, (float) timeShift);
+        timeShiftKernel->execute(numParticles);
+        applyConstraintsImpl(true, 1e-4);
+    }
+    
+    // Retrieve the velocities.
+    
+    velocities.resize(numParticles);
+    if (context.getUseDoublePrecision() || context.getUseMixedPrecision()) {
+        auto velm = (mm_double4*)context.getPinnedBuffer();
+        context.getVelm().download(velm);
+        for (int i = 0; i < numParticles; i++) {
+            mm_double4 v = velm[i];
+            velocities[i] = Vec3(v.x, v.y, v.z);
+        }
+    }
+    else {
+        auto velm = (mm_float4*)context.getPinnedBuffer();
+        context.getVelm().download(velm);
+        for (int i = 0; i < numParticles; i++) {
+            mm_float4 v = velm[i];
+            velocities[i] = Vec3(v.x, v.y, v.z);
+        }
+    }
+    
+    // Restore the velocities.
+    
+    if (timeShift != 0)
+        posDelta.copyTo(context.getVelm());
 }
