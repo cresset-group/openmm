@@ -185,7 +185,7 @@ def retrieveTestSystem(testName, pme_cutoff=0.9, bond_constraints='hbonds', pola
         test_parameters['hydrogen_mass'] = '1'
     elif amber:
         dirname = downloadAmberSuite()
-        names = {'amber20-dhfr':'JAC', 'amber20-factorix':'FactorIX', 'amber20-cellulose':'Cellulose', 'amber20-stmv':'STMV'}
+        names = {'amber20-dhfr':'JAC', 'amber20-cellulose':'Cellulose', 'amber20-stmv':'STMV'}
         fileName = names[testName]
         prmtop = app.AmberPrmtopFile(os.path.join(dirname, f'PME/Topologies/{fileName}.prmtop'))
         inpcrd = app.AmberInpcrdFile(os.path.join(dirname, f'PME/Coordinates/{fileName}.inpcrd'))
@@ -352,6 +352,8 @@ def runOneTest(testName, options):
         properties['DeviceIndex'] = options.device
         if ',' in options.device or ' ' in options.device:
             initialSteps = 250
+    if options.opencl_platform is not None and 'OpenCLPlatformIndex' in platform.getPropertyNames():
+        properties['OpenCLPlatformIndex'] = options.opencl_platform
     if (options.precision is not None) and ('Precision' in platform.getPropertyNames()):
         properties['Precision'] = options.precision
 
@@ -447,7 +449,7 @@ def runOneTest(testName, options):
 
 platform_speeds = { mm.Platform.getPlatform(i).getName() : mm.Platform.getPlatform(i).getSpeed() for i in range(mm.Platform.getNumPlatforms()) }
 PLATFORMS = [platform for platform, speed in sorted(platform_speeds.items(), key=lambda item: item[1], reverse=True)]
-TESTS = ('gbsa', 'rf', 'pme', 'apoa1rf', 'apoa1pme', 'apoa1ljpme', 'amoebagk', 'amoebapme', 'amber20-dhfr',  'amber20-factorix', 'amber20-cellulose', 'amber20-stmv')
+TESTS = ('gbsa', 'rf', 'pme', 'apoa1rf', 'apoa1pme', 'apoa1ljpme', 'amoebagk', 'amoebapme', 'amber20-dhfr', 'amber20-cellulose', 'amber20-stmv')
 ENSEMBLES = ('NVE', 'NVT', 'NPT')
 BOND_CONSTRAINTS = ('hbonds', 'allbonds')
 PRECISIONS = ('single', 'mixed', 'double')
@@ -477,6 +479,7 @@ parser.add_argument('--polarization', default='mutual', dest='polarization', cho
 parser.add_argument('--mutual-epsilon', default=1e-5, dest='epsilon', type=float, help='mutual induced epsilon for AMOEBA [default: 1e-5]')
 parser.add_argument('--bond-constraints', default='hbonds', dest='bond_constraints', help=f'hbonds: constrain bonds to hydrogen, use 1.5*amu H mass; allbonds: constrain all bonds, use 4*amu H mass, and use larger timestep. This option is ignored for AMOEBA: {BOND_CONSTRAINTS} [default: hbonds]')
 parser.add_argument('--device', default=None, dest='device', help='device index for CUDA or OpenCL')
+parser.add_argument('--opencl-platform', default=None, dest='opencl_platform', help='platform index for OpenCL')
 parser.add_argument('--precision', default='single', dest='precision', help=f'precision modes for CUDA or OpenCL: {PRECISIONS} [default: single]')
 parser.add_argument('--style', default='simple', dest='style', choices=STYLES, help=f'output style: {STYLES} [default: simple]')
 parser.add_argument('--outfile', default=None, dest='outfile', help='output filename for benchmark logging (must end with .yaml or .json)')

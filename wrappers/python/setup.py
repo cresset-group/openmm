@@ -7,7 +7,7 @@ import os
 import sys
 import platform
 import numpy
-from distutils.core import setup
+from setuptools import setup
 from Cython.Build import cythonize
 
 MAJOR_VERSION_NUM='@OPENMM_MAJOR_VERSION@'
@@ -125,7 +125,7 @@ if not release:
 def buildKeywordDictionary(major_version_num=MAJOR_VERSION_NUM,
                            minor_version_num=MINOR_VERSION_NUM,
                            build_info=BUILD_INFO):
-    from distutils.core import Extension
+    from setuptools import Extension
     setupKeywords = {}
     setupKeywords["name"]              = "OpenMM"
     setupKeywords["version"]           = "%s.%s.%s" % (major_version_num,
@@ -228,6 +228,22 @@ def buildKeywordDictionary(major_version_num=MAJOR_VERSION_NUM,
         extensionArgs["runtime_library_dirs"] = library_dirs
     setupKeywords["ext_modules"] = [Extension(**extensionArgs)]
     setupKeywords["ext_modules"] += cythonize('openmm/app/internal/*.pyx')
+
+    setupKeywords["ext_modules"] +=cythonize(Extension(
+        "openmm.app.internal.xtc_utils",
+        sources=[
+            "openmm/app/internal/xtc_utils/src/xdrfile_xtc.cpp",
+            "openmm/app/internal/xtc_utils/src/xdrfile.cpp",
+            "openmm/app/internal/xtc_utils/src/xtc.cpp",
+            "openmm/app/internal/xtc_utils/xtc.pyx",
+        ],
+        include_dirs=include_dirs +[
+            "openmm/app/internal/xtc_utils/include",
+            "openmm/app/internal/xtc_utils/",
+            numpy.get_include(),
+        ],
+        language="c++",
+    ))
 
     outputString = ''
     firstTab     = 40
