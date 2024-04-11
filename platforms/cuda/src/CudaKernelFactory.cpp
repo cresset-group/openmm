@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2008-2023 Stanford University and the Authors.      *
+ * Portions copyright (c) 2008-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -72,7 +72,7 @@ KernelImpl* CudaKernelFactory::createKernelImpl(std::string name, const Platform
     if (name == CalcForcesAndEnergyKernel::Name())
         return new CudaCalcForcesAndEnergyKernel(name, platform, cu);
     if (name == UpdateStateDataKernel::Name())
-        return new CudaUpdateStateDataKernel(name, platform, cu);
+        return new CommonUpdateStateDataKernel(name, platform, cu);
     if (name == ApplyConstraintsKernel::Name())
         return new CommonApplyConstraintsKernel(name, platform, cu);
     if (name == VirtualSitesKernel::Name())
@@ -123,8 +123,6 @@ KernelImpl* CudaKernelFactory::createKernelImpl(std::string name, const Platform
         return new CommonCalcGayBerneForceKernel(name, platform, cu);
     if (name == IntegrateVerletStepKernel::Name())
         return new CommonIntegrateVerletStepKernel(name, platform, cu);
-    if (name == IntegrateLangevinStepKernel::Name())
-        return new CommonIntegrateLangevinStepKernel(name, platform, cu);
     if (name == IntegrateLangevinMiddleStepKernel::Name())
         return new CommonIntegrateLangevinMiddleStepKernel(name, platform, cu);
     if (name == IntegrateBrownianStepKernel::Name())
