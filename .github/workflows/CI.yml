@@ -31,7 +31,7 @@ jobs:
           - name: Linux CUDA 12.4
             os: ubuntu-latest
             env: ubuntu-latest
-            python-version: "3.11"
+            python-version: "3.13"
             cuda-version: "12.4"
             OPENCL: false
             CMAKE_FLAGS: |
@@ -52,7 +52,7 @@ jobs:
           - name: Linux CUDA 11.8
             os: ubuntu-latest
             env: ubuntu-latest
-            python-version: "3.11"
+            python-version: "3.13"
             OPENCL: false
             cuda-version: "11.8"
             CMAKE_FLAGS: |
@@ -70,10 +70,10 @@ jobs:
               -DCUDA_TOOLKIT_INCLUDE=/usr/local/cuda-11.2/include \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-11.2/ \
 
-          - name: Linux AMD OpenCL
+          - name: Linux Intel OpenCL
             os: ubuntu-latest
             env: ubuntu-latest
-            python-version: "3.11"
+            python-version: "3.13"
             OPENCL: true
             cuda-version: ""
             CMAKE_FLAGS: |
@@ -88,13 +88,11 @@ jobs:
               -DOPENMM_BUILD_PYTHON_WRAPPERS=OFF \
               -DOPENMM_BUILD_C_AND_FORTRAN_WRAPPERS=OFF \
               -DOPENMM_BUILD_EXAMPLES=OFF \
-              -DOPENCL_INCLUDE_DIR=${GITHUB_WORKSPACE}/AMDAPPSDK/include \
-              -DOPENCL_LIBRARY=${GITHUB_WORKSPACE}/AMDAPPSDK/lib/x86_64/libOpenCL.so \
 
           - name: Linux HIP
             os: ubuntu-latest
             env: ubuntu-latest-hip
-            python-version: "3.11"
+            python-version: "3.13"
             OPENCL: false
             CMAKE_FLAGS: |
               -DOPENMM_BUILD_HIP_LIB=ON \
@@ -106,10 +104,10 @@ jobs:
               -DOPENMM_BUILD_C_AND_FORTRAN_WRAPPERS=OFF \
               -DOPENMM_BUILD_EXAMPLES=OFF
 
-          - name: Linux CPU Python 3.11 with static lib
+          - name: Linux CPU Python 3.13 with static lib
             os: ubuntu-latest
             env: ubuntu-latest
-            python-version: "3.11"
+            python-version: "3.13"
             OPENCL: false
             cuda-version: ""
             CC: $CCACHE/clang
@@ -119,8 +117,8 @@ jobs:
               -DOPENMM_BUILD_OPENCL_LIB=OFF \
               -DOPENMM_BUILD_OPENCL_TESTS=OFF \
 
-          - name: Linux CPU Python 3.11 with condaforge compilers
-            python-version: "3.11"
+          - name: Linux CPU Python 3.13 with condaforge compilers
+            python-version: "3.13"
             os: ubuntu-latest
             env: ubuntu-latest
             OPENCL: false
@@ -130,8 +128,8 @@ jobs:
               -DOPENMM_BUILD_OPENCL_LIB=OFF \
               -DOPENMM_BUILD_OPENCL_TESTS=OFF \
 
-          - name: Linux CPU Python 3.9
-            python-version: "3.9"
+          - name: Linux CPU Python 3.10
+            python-version: "3.10"
             os: ubuntu-latest
             env: ubuntu-latest
             OPENCL: false
@@ -140,8 +138,8 @@ jobs:
               -DOPENMM_BUILD_OPENCL_LIB=OFF \
               -DOPENMM_BUILD_OPENCL_TESTS=OFF \
 
-          - name: Linux CPU Python 3.11
-            python-version: "3.11"
+          - name: Linux CPU Python 3.13
+            python-version: "3.13"
             os: ubuntu-latest
             env: ubuntu-latest
             OPENCL: false
@@ -150,18 +148,8 @@ jobs:
               -DOPENMM_BUILD_OPENCL_LIB=OFF \
               -DOPENMM_BUILD_OPENCL_TESTS=OFF \
 
-          - name: Linux CPU Pypy
-            python-version: "pypy"
-            os: ubuntu-latest
-            env: ubuntu-pypy
-            OPENCL: false
-            cuda-version: ""
-            CMAKE_FLAGS: |
-              -DOPENMM_BUILD_OPENCL_LIB=OFF \
-              -DOPENMM_BUILD_OPENCL_TESTS=OFF \
-
-          - name: MacOS Intel Python 3.11
-            python-version: "3.11"
+          - name: MacOS Intel Python 3.13
+            python-version: "3.13"
             os: macos-13
             env: macos
             OPENCL: false
@@ -170,8 +158,8 @@ jobs:
               -DOPENMM_BUILD_OPENCL_LIB=ON \
               -DOPENMM_BUILD_OPENCL_TESTS=OFF \
 
-          - name: MacOS ARM Python 3.11
-            python-version: "3.11"
+          - name: MacOS ARM Python 3.13
+            python-version: "3.13"
             os: macos-latest
             env: macos
             OPENCL: false
@@ -184,25 +172,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         name: "Prepare base dependencies"
-        if: matrix.python-version == 'pypy'
-        with:
-          activate-environment: build
-          environment-file: devtools/ci/gh-actions/conda-envs/build-${{ matrix.env }}.yml
-          auto-activate-base: false
-          miniforge-variant: Mambaforge-pypy3
-          use-mamba: true
-
-      - uses: conda-incubator/setup-miniconda@v2
-        name: "Prepare base dependencies"
-        if: matrix.python-version != 'pypy'
         with:
           python-version: ${{ matrix.python-version }}
           activate-environment: build
           environment-file: devtools/ci/gh-actions/conda-envs/build-${{ matrix.env }}.yml
           auto-activate-base: false
-          miniforge-variant: Mambaforge
+          miniforge-variant: Miniforge3
           use-mamba: true
 
       - name: "Install CUDA on Ubuntu (if needed)"
@@ -213,7 +190,7 @@ jobs:
 
       - name: "Install OpenCL on Ubuntu (if needed)"
         if: matrix.OPENCL == true && startsWith(matrix.os, 'ubuntu')
-        run: source devtools/ci/gh-actions/scripts/install_amd_opencl.sh
+        run: source devtools/ci/gh-actions/scripts/install_intel_opencl.sh
 
       - name: "Install conda-forge compilers on Ubuntu or M1 (if needed)"
         if: matrix.compilers == 'conda-forge'
@@ -278,6 +255,9 @@ jobs:
         run: |
           set -x
           cd build
+          if [[ ${{ matrix.OPENCL }} == true ]]; then
+            source /opt/intel/oneapi/setvars.sh
+          fi
           python ../devtools/run-ctest.py --parallel 2 --timeout 600 --job-duration 900 --attempts 3
 
           if [[ ${{ matrix.os }} == ubuntu-* ]]; then SHLIB=so; else SHLIB=dylib; fi
@@ -326,8 +306,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows CUDA 11.2 Python 3.11
-            python-version: "3.11"
+          - name: Windows CUDA 11.2 Python 3.13
+            python-version: "3.13"
             cuda-version: "11.2"
             CMAKE_FLAGS: |
               -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" ^
@@ -461,19 +441,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: PowerPC CPU/CUDA 10.2 Python 3.11 with condaforge compilers
+          - name: PowerPC CPU/CUDA 10.2 Python 3.13 with condaforge compilers
             docker-image: quay.io/condaforge/linux-anvil-ppc64le-cuda:10.2
-            python-version: "3.11"
+            python-version: "3.13"
             compilers: compilers
 
-          #- name: PowerPC CPU Python 3.11 devtoolset-7 compilers
+          #- name: PowerPC CPU Python 3.13 devtoolset-7 compilers
           #  docker-image: quay.io/condaforge/linux-anvil-ppc64le
-          #  python-version: "3.11"
+          #  python-version: "3.13"
           #  compilers: devtoolset-7
 
-          - name: ARM CPU Python 3.11 with condaforge compilers
+          - name: ARM CPU Python 3.13 with condaforge compilers
             docker-image: quay.io/condaforge/linux-anvil-aarch64
-            python-version: "3.11"
+            python-version: "3.13"
             compilers: compilers
 
 
@@ -654,7 +634,7 @@ jobs:
         shell: bash -l {0}
         env:
           # Pipe-seperated list of domains to skip
-          SKIP_DOMAIN: support.amd.com|www.pnas.org|doi.org
+          SKIP_DOMAIN: support.amd.com|www.pnas.org|doi.org|commonfund.nih.gov
         run: |
           set +e
           # Linkinator accepts regex for its --skip argument, so we

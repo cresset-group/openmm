@@ -36,6 +36,7 @@
 #include "openmm/kernels.h"
 #include "openmm/internal/CustomCPPForceImpl.h"
 #include "openmm/internal/CustomNonbondedForceImpl.h"
+#include "openmm/internal/windowsExport.h"
 #include "SimTKOpenMMRealType.h"
 #include "ReferenceNeighborList.h"
 #include "lepton/CompiledExpression.h"
@@ -116,7 +117,7 @@ private:
  * This kernel provides methods for setting and retrieving various state data: time, positions,
  * velocities, and forces.
  */
-class ReferenceUpdateStateDataKernel : public UpdateStateDataKernel {
+class OPENMM_EXPORT ReferenceUpdateStateDataKernel : public UpdateStateDataKernel {
 public:
     ReferenceUpdateStateDataKernel(std::string name, const Platform& platform, ReferencePlatform::PlatformData& data) : UpdateStateDataKernel(name, platform), data(data) {
     }
@@ -662,6 +663,7 @@ private:
     std::vector<std::vector<double> > particleParamArray, bonded14ParamArray;
     std::vector<std::array<double, 3> > baseParticleParams, baseExceptionParams;
     std::map<std::pair<std::string, int>, std::array<double, 3> > particleParamOffsets, exceptionParamOffsets;
+    std::map<int, int> nb14Index;
     double nonbondedCutoff, switchingDistance, rfDielectric, ewaldAlpha, ewaldDispersionAlpha, dispersionCoefficient;
     int kmax[3], gridSize[3], dispersionGridSize[3];
     bool useSwitchingFunction, exceptionsArePeriodic;
@@ -1202,10 +1204,8 @@ public:
      * 
      * @param context    the context in which to execute this kernel
      * @param integrator the VerletIntegrator this kernel is being used for
-     * @param forcesAreValid a reference to the parent integrator's boolean for keeping
-     *                       track of the validity of the current forces.
      */
-    void execute(ContextImpl& context, const NoseHooverIntegrator& integrator, bool &forcesAreValid);
+    void execute(ContextImpl& context, const NoseHooverIntegrator& integrator);
     /**
      * Compute the kinetic energy.
      * 

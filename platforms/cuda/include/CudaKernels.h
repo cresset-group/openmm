@@ -89,7 +89,7 @@ private:
 class CudaCalcNonbondedForceKernel : public CalcNonbondedForceKernel {
 public:
     CudaCalcNonbondedForceKernel(std::string name, const Platform& platform, CudaContext& cu, const System& system) : CalcNonbondedForceKernel(name, platform),
-            cu(cu), hasInitializedFFT(false), sort(NULL), dispersionFft(NULL), fft(NULL), pmeio(NULL), usePmeStream(false) {
+            cu(cu), hasInitializedFFT(false), sort(NULL), dispersionFft(NULL), fft(NULL), pmeio(NULL), useFixedPointChargeSpreading(false), usePmeStream(false) {
     }
     ~CudaCalcNonbondedForceKernel();
     /**
@@ -211,11 +211,12 @@ private:
     std::vector<std::pair<int, int> > exceptionAtoms;
     std::vector<std::string> paramNames;
     std::vector<double> paramValues;
+    std::map<int, int> exceptionIndex;
     double ewaldSelfEnergy, dispersionCoefficient, alpha, dispersionAlpha;
     int interpolateForceThreads;
     int gridSizeX, gridSizeY, gridSizeZ;
     int dispersionGridSizeX, dispersionGridSizeY, dispersionGridSizeZ;
-    bool hasCoulomb, hasLJ, usePmeStream, useCudaFFT, doLJPME, usePosqCharges, recomputeParams, hasOffsets;
+    bool hasCoulomb, hasLJ, useFixedPointChargeSpreading, usePmeStream, useCudaFFT, doLJPME, usePosqCharges, recomputeParams, hasOffsets;
     NonbondedMethod nonbondedMethod;
     static const int PmeOrder = 5;
 };
@@ -244,4 +245,3 @@ public:
 } // namespace OpenMM
 
 #endif /*OPENMM_CUDAKERNELS_H_*/
-
